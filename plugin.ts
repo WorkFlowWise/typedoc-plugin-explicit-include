@@ -1,84 +1,35 @@
-import { Reflection } from 'typedoc/dist/lib/models/reflections/abstract';
-import { ReflectionKind } from 'typedoc/dist/lib/models/reflections';
 import { Component, ConverterComponent } from 'typedoc/dist/lib/converter/components';
-import { Converter } from 'typedoc/dist/lib/converter/converter';
 import { Context } from 'typedoc/dist/lib/converter/context';
-import { CommentPlugin } from 'typedoc/dist/lib/converter/plugins/CommentPlugin';
-import { getRawComment } from 'typedoc/dist/lib/converter/factories/comment';
+import { Converter } from 'typedoc/dist/lib/converter/converter';
+import { CommentPlugin } from 'typedoc/dist/lib/converter/plugins';
+import { IntrinsicType, ReflectionKind, TypeParameterReflection } from 'typedoc/dist/lib/models';
+import { DeclarationReflection, ParameterReflection, ProjectReflection, SignatureReflection, TraverseProperty } from 'typedoc/dist/lib/models/reflections';
+import { Reflection } from 'typedoc/dist/lib/models/reflections/abstract';
 import { Options, OptionsReadMode } from 'typedoc/dist/lib/utils/options';
 
-/**
- * This plugin allows you to specify if a symbol is internal or external.
- *
- * Add @internal or @external to the docs for a symbol.
- *
- * #### Example:
- * ```
- * &#47;**
- *  * @internal
- *  *&#47;
- * let foo = "123
- *
- * &#47;**
- *  * @external
- *  *&#47;
- * let bar = "123
- * ```
- */
-@Component({ name: 'internal-external' })
-export class InternalExternalPlugin extends ConverterComponent {
-  externals: string[];
-  internals: string[];
-
-  externalRegex: RegExp;
-  internalRegex: RegExp;
+@Component({ name: 'explicit-include' })
+export class ExplicitIncludePlugin extends ConverterComponent {
+  INCLUDE = 'include';
 
   initialize() {
+    debugger;
     var options: Options = this.application.options;
     options.read({}, OptionsReadMode.Prefetch);
 
-    this.externals = (options.getValue('external-aliases') || 'external').split(',');
-    this.internals = (options.getValue('internal-aliases') || 'internal').split(',');
-
-    this.externalRegex = new RegExp(`@(${this.externals.join('|')})\\b`);
-    this.internalRegex = new RegExp(`@(${this.internals.join('|')})\\b`);
-
     this.listenTo(this.owner, {
-      [Converter.EVENT_CREATE_SIGNATURE]: this.onSignature,
       [Converter.EVENT_CREATE_DECLARATION]: this.onDeclaration,
-      [Converter.EVENT_FILE_BEGIN]: this.onFileBegin,
+      [Converter.EVENT_END]: this.onEnd,
     });
   }
 
-  private static markSignatureAndMethod(reflection: Reflection, external: boolean) {
-    reflection.flags.isExternal = external;
-    // if (reflection.parent && (reflection.parent.kind === ReflectionKind.Method || reflection.parent.kind === ReflectionKind.Function) {
-    if (reflection.parent && reflection.parent.kind & ReflectionKind.FunctionOrMethod) {
-      reflection.parent.flags.isExternal = external;
-    }
-  }
-
-  /**
-   * Triggered when the converter has created a declaration reflection.
-   *
-   * @param context  The context object describing the current state the converter is in.
-   * @param reflection  The reflection that is currently processed.
-   * @param node  The node that is currently processed if available.
-   */
-  private onSignature(context: Context, reflection: Reflection, node?) {
-    if (!reflection.comment) return;
-
-    // Look for @internal or @external
-    let comment = reflection.comment;
-
-    if (this.internals.some(tag => comment.hasTag(tag))) {
-      InternalExternalPlugin.markSignatureAndMethod(reflection, false);
-    } else if (this.externals.some(tag => comment.hasTag(tag))) {
-      InternalExternalPlugin.markSignatureAndMethod(reflection, true);
-    }
-
-    this.internals.forEach(tag => CommentPlugin.removeTags(comment, tag));
-    this.externals.forEach(tag => CommentPlugin.removeTags(comment, tag));
+  private onEnd(context: Context, reflection: Reflection, node?) {
+    context.project.files.forEach(file => {
+      file.reflections.forEach(reflection => {
+        if (reflection.comment) {
+          CommentPlugin.removeTags(reflection.comment, this.INCLUDE);
+        }
+      });
+    });
   }
 
   /**
@@ -89,48 +40,103 @@ export class InternalExternalPlugin extends ConverterComponent {
    * @param node  The node that is currently processed if available.
    */
   private onDeclaration(context: Context, reflection: Reflection, node?) {
-    if (!reflection.comment) return;
+    let noIncludeCommentOnDeclaration = !reflection.comment || !reflection.comment.hasTag(this.INCLUDE);
+    let noIncludeCommentOnParentDeclaration = !reflection.parent
+      || !reflection.parent.comment
+      || !reflection.parent.comment.hasTag(this.INCLUDE);
 
-    // Look for @internal or @external
-    let comment = reflection.comment;
-
-    if (this.internals.some(tag => comment.hasTag(tag))) {
-      reflection.flags.isExternal = false;
-    } else if (this.externals.some(tag => comment.hasTag(tag))) {
-      reflection.flags.isExternal = true;
+    switch (reflection.kind) {
+      case ReflectionKind.Class:
+      case ReflectionKind.Interface:
+        if (noIncludeCommentOnDeclaration) {
+          ExplicitIncludePlugin.removeReflection(context.project, reflection);
+        }
+        break;
+      case ReflectionKind.Constructor:
+        ExplicitIncludePlugin.removeReflection(context.project, reflection);
+        break;
+      default:
+        if (noIncludeCommentOnDeclaration && noIncludeCommentOnParentDeclaration) {
+          ExplicitIncludePlugin.removeReflection(context.project, reflection);
+        }
+        break;
     }
-
-    this.internals.forEach(tag => CommentPlugin.removeTags(comment, tag));
-    this.externals.forEach(tag => CommentPlugin.removeTags(comment, tag));
   }
 
   /**
-   * Triggered when the converter has started loading a file.
-   *
-   * This sets the file's context `isExternal` value if an annotation is found.
-   * All symbols inside the file default to the file's `isExternal` value.
-   *
-   * The onFileBegin event is used because once the Declaration (which represents
-   * the file) has been created, it's too late to update the context.
-   * The declaration will also be processed during `onDeclaration` where the tags
-   * will be removed from the comment.
-   *
-   * @param context  The context object describing the current state the converter is in.
-   * @param reflection  The reflection that is currently processed.
-   * @param node  The node that is currently processed if available.
+   * Remove the given reflection from the project.
    */
-  private onFileBegin(context: Context, reflection: Reflection, node?) {
-    if (!node) return;
+  static removeReflection(project: ProjectReflection, reflection: Reflection, deletedIds?: number[]) {
+    reflection.traverse((child) => ExplicitIncludePlugin.removeReflection(project, child, deletedIds));
 
-    // Look for @internal or @external
-    let comment = getRawComment(node);
-    let internalMatch = this.internalRegex.exec(comment);
-    let externalMatch = this.externalRegex.exec(comment);
-
-    if (internalMatch) {
-      context.isExternal = false;
-    } else if (externalMatch) {
-      context.isExternal = true;
+    const parent = <DeclarationReflection>reflection.parent;
+    if (!parent) {
+      return;
     }
+    parent.traverse((child: Reflection, property: TraverseProperty) => {
+      if (child === reflection) {
+        switch (property) {
+          case TraverseProperty.Children:
+            if (parent.children) {
+              const index = parent.children.indexOf(<DeclarationReflection>reflection);
+              if (index !== -1) {
+                parent.children.splice(index, 1);
+              }
+            }
+            break;
+          case TraverseProperty.GetSignature:
+            delete parent.getSignature;
+            break;
+          case TraverseProperty.IndexSignature:
+            delete parent.indexSignature;
+            break;
+          case TraverseProperty.Parameters:
+            if ((<SignatureReflection>reflection.parent).parameters) {
+              const index = (<SignatureReflection>reflection.parent).parameters!.indexOf(<ParameterReflection>reflection);
+              if (index !== -1) {
+                (<SignatureReflection>reflection.parent).parameters!.splice(index, 1);
+              }
+            }
+            break;
+          case TraverseProperty.SetSignature:
+            delete parent.setSignature;
+            break;
+          case TraverseProperty.Signatures:
+            if (parent.signatures) {
+              const index = parent.signatures.indexOf(<SignatureReflection>reflection);
+              if (index !== -1) {
+                parent.signatures.splice(index, 1);
+              }
+            }
+            break;
+          case TraverseProperty.TypeLiteral:
+            parent.type = new IntrinsicType('Object');
+            break;
+          case TraverseProperty.TypeParameter:
+            if (parent.typeParameters) {
+              const index = parent.typeParameters.indexOf(<TypeParameterReflection>reflection);
+              if (index !== -1) {
+                parent.typeParameters.splice(index, 1);
+              }
+            }
+            break;
+        }
+      }
+    });
+
+    let id = reflection.id;
+    delete project.reflections[id];
+
+    // if an array was provided, keep track of the reflections that have been deleted, otherwise clean symbol mappings
+    if (deletedIds) {
+      deletedIds.push(id);
+    } else {
+      for (let key in project.symbolMapping) {
+        if (project.symbolMapping.hasOwnProperty(key) && project.symbolMapping[key] === id) {
+          delete project.symbolMapping[key];
+        }
+      }
+    }
+
   }
 }

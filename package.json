@@ -1,12 +1,12 @@
 {
-  "name": "typedoc-plugin-internal-external",
-  "version": "1.0.10",
-  "description": "Force a File or Reflection (symbol) to be @internal or @external",
+  "name": "typedoc-plugin-explicit-include",
+  "version": "0.0.1",
+  "description": "Typedoc plugin to export only reflections marked with @include",
   "main": "index.js",
   "scripts": {
     "build": "tsc",
     "prepublish": "npm run build",
-    "precommit": "pretty-quick --staged"
+    "precommit": "node ./node_modules/pretty-quick --staged"
   },
   "keywords": [
     "typedocplugin",
@@ -14,19 +14,19 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/christopherthielen/typedoc-plugin-internal-external"
+    "url": "https://github.com/WorkFlowWise/typedoc-plugin-explicit-include"
   },
   "author": "Chris Thielen",
   "license": "MIT",
   "peerDependencies": {
-    "typedoc": "^0.8.0"
+    "typedoc": "0.13.0"
   },
   "devDependencies": {
     "@types/handlebars": "^4.0.31",
     "husky": "^0.14.3",
     "prettier": "^1.11.1",
     "pretty-quick": "^1.4.1",
-    "typedoc": "^0.8.0",
-    "typescript": "^2.4.0"
+    "typedoc": "0.13.0",
+    "typescript": "3.1.6"
   }
 }
