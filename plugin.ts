@@ -3,18 +3,23 @@ import { Context } from 'typedoc/dist/lib/converter/context';
 import { Converter } from 'typedoc/dist/lib/converter/converter';
 import { CommentPlugin } from 'typedoc/dist/lib/converter/plugins';
 import { IntrinsicType, ReflectionKind, TypeParameterReflection } from 'typedoc/dist/lib/models';
-import { DeclarationReflection, ParameterReflection, ProjectReflection, SignatureReflection, TraverseProperty } from 'typedoc/dist/lib/models/reflections';
+import {
+  DeclarationReflection,
+  ParameterReflection,
+  ProjectReflection,
+  SignatureReflection,
+  TraverseProperty,
+} from 'typedoc/dist/lib/models/reflections';
 import { Reflection } from 'typedoc/dist/lib/models/reflections/abstract';
-import { Options, OptionsReadMode } from 'typedoc/dist/lib/utils/options';
+import { Options } from 'typedoc/dist/lib/utils/options';
 
 @Component({ name: 'explicit-include' })
 export class ExplicitIncludePlugin extends ConverterComponent {
   INCLUDE = 'include';
 
   initialize() {
-    debugger;
     var options: Options = this.application.options;
-    options.read({}, OptionsReadMode.Prefetch);
+    options.read({}, 0);
 
     this.listenTo(this.owner, {
       [Converter.EVENT_CREATE_DECLARATION]: this.onDeclaration,
@@ -41,24 +46,33 @@ export class ExplicitIncludePlugin extends ConverterComponent {
    */
   private onDeclaration(context: Context, reflection: Reflection, node?) {
     let noIncludeCommentOnDeclaration = !reflection.comment || !reflection.comment.hasTag(this.INCLUDE);
-    let noIncludeCommentOnParentDeclaration = !reflection.parent
-      || !reflection.parent.comment
-      || !reflection.parent.comment.hasTag(this.INCLUDE);
+    // let noIncludeCommentOnParentDeclaration =
+    // !reflection.parent || !reflection.parent.comment || !reflection.parent.comment.hasTag(this.INCLUDE);
 
     switch (reflection.kind) {
-      case ReflectionKind.Class:
-      case ReflectionKind.Interface:
+      // case ReflectionKind.Class:
+      // case ReflectionKind.Module:
+      // case ReflectionKind.ExternalModule:
+      // case ReflectionKind.Interface:
+      //   if (noIncludeCommentOnDeclaration) {
+      //     ExplicitIncludePlugin.removeReflection(context.project, reflection);
+      //   }
+      //   break;
+      // case ReflectionKind.Constructor:
+      //   ExplicitIncludePlugin.removeReflection(context.project, reflection);
+      //   break;
+      case ReflectionKind.Variable:
+      case ReflectionKind.Function:
         if (noIncludeCommentOnDeclaration) {
           ExplicitIncludePlugin.removeReflection(context.project, reflection);
+        } else {
+          console.log('==============================');
+          console.log(`Yo we keepin' this one!`);
+          console.log(reflection.comment);
+          console.log('==============================');
         }
-        break;
-      case ReflectionKind.Constructor:
-        ExplicitIncludePlugin.removeReflection(context.project, reflection);
         break;
       default:
-        if (noIncludeCommentOnDeclaration && noIncludeCommentOnParentDeclaration) {
-          ExplicitIncludePlugin.removeReflection(context.project, reflection);
-        }
         break;
     }
   }
@@ -67,7 +81,7 @@ export class ExplicitIncludePlugin extends ConverterComponent {
    * Remove the given reflection from the project.
    */
   static removeReflection(project: ProjectReflection, reflection: Reflection, deletedIds?: number[]) {
-    reflection.traverse((child) => ExplicitIncludePlugin.removeReflection(project, child, deletedIds));
+    reflection.traverse(child => ExplicitIncludePlugin.removeReflection(project, child, deletedIds));
 
     const parent = <DeclarationReflection>reflection.parent;
     if (!parent) {
@@ -92,7 +106,9 @@ export class ExplicitIncludePlugin extends ConverterComponent {
             break;
           case TraverseProperty.Parameters:
             if ((<SignatureReflection>reflection.parent).parameters) {
-              const index = (<SignatureReflection>reflection.parent).parameters!.indexOf(<ParameterReflection>reflection);
+              const index = (<SignatureReflection>reflection.parent).parameters!.indexOf(
+                <ParameterReflection>reflection,
+              );
               if (index !== -1) {
                 (<SignatureReflection>reflection.parent).parameters!.splice(index, 1);
               }
@@ -137,6 +153,5 @@ export class ExplicitIncludePlugin extends ConverterComponent {
         }
       }
     }
-
   }
 }

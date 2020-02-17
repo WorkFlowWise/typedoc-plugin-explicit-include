@@ -1,3 +1,4 @@
+"use strict";
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
@@ -5,31 +6,30 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
 var ExplicitIncludePlugin_1;
-import { Component, ConverterComponent } from 'typedoc/dist/lib/converter/components';
-import { Converter } from 'typedoc/dist/lib/converter/converter';
-import { CommentPlugin } from 'typedoc/dist/lib/converter/plugins';
-import { IntrinsicType, ReflectionKind } from 'typedoc/dist/lib/models';
-import { TraverseProperty } from 'typedoc/dist/lib/models/reflections';
-import { OptionsReadMode } from 'typedoc/dist/lib/utils/options';
-let ExplicitIncludePlugin = ExplicitIncludePlugin_1 = class ExplicitIncludePlugin extends ConverterComponent {
+Object.defineProperty(exports, "__esModule", { value: true });
+const components_1 = require("typedoc/dist/lib/converter/components");
+const converter_1 = require("typedoc/dist/lib/converter/converter");
+const plugins_1 = require("typedoc/dist/lib/converter/plugins");
+const models_1 = require("typedoc/dist/lib/models");
+const reflections_1 = require("typedoc/dist/lib/models/reflections");
+let ExplicitIncludePlugin = ExplicitIncludePlugin_1 = class ExplicitIncludePlugin extends components_1.ConverterComponent {
     constructor() {
         super(...arguments);
         this.INCLUDE = 'include';
     }
     initialize() {
-        debugger;
         var options = this.application.options;
-        options.read({}, OptionsReadMode.Prefetch);
+        options.read({}, 0);
         this.listenTo(this.owner, {
-            [Converter.EVENT_CREATE_DECLARATION]: this.onDeclaration,
-            [Converter.EVENT_END]: this.onEnd,
+            [converter_1.Converter.EVENT_CREATE_DECLARATION]: this.onDeclaration,
+            [converter_1.Converter.EVENT_END]: this.onEnd,
         });
     }
     onEnd(context, reflection, node) {
         context.project.files.forEach(file => {
             file.reflections.forEach(reflection => {
                 if (reflection.comment) {
-                    CommentPlugin.removeTags(reflection.comment, this.INCLUDE);
+                    plugins_1.CommentPlugin.removeTags(reflection.comment, this.INCLUDE);
                 }
             });
         });
@@ -43,23 +43,33 @@ let ExplicitIncludePlugin = ExplicitIncludePlugin_1 = class ExplicitIncludePlugi
      */
     onDeclaration(context, reflection, node) {
         let noIncludeCommentOnDeclaration = !reflection.comment || !reflection.comment.hasTag(this.INCLUDE);
-        let noIncludeCommentOnParentDeclaration = !reflection.parent
-            || !reflection.parent.comment
-            || !reflection.parent.comment.hasTag(this.INCLUDE);
+        // let noIncludeCommentOnParentDeclaration =
+        // !reflection.parent || !reflection.parent.comment || !reflection.parent.comment.hasTag(this.INCLUDE);
         switch (reflection.kind) {
-            case ReflectionKind.Class:
-            case ReflectionKind.Interface:
+            // case ReflectionKind.Class:
+            // case ReflectionKind.Module:
+            // case ReflectionKind.ExternalModule:
+            // case ReflectionKind.Interface:
+            //   if (noIncludeCommentOnDeclaration) {
+            //     ExplicitIncludePlugin.removeReflection(context.project, reflection);
+            //   }
+            //   break;
+            // case ReflectionKind.Constructor:
+            //   ExplicitIncludePlugin.removeReflection(context.project, reflection);
+            //   break;
+            case models_1.ReflectionKind.Variable:
+            case models_1.ReflectionKind.Function:
                 if (noIncludeCommentOnDeclaration) {
                     ExplicitIncludePlugin_1.removeReflection(context.project, reflection);
                 }
-                break;
-            case ReflectionKind.Constructor:
-                ExplicitIncludePlugin_1.removeReflection(context.project, reflection);
+                else {
+                    console.log('==============================');
+                    console.log(`Yo we keepin' this one!`);
+                    console.log(reflection.comment);
+                    console.log('==============================');
+                }
                 break;
             default:
-                if (noIncludeCommentOnDeclaration && noIncludeCommentOnParentDeclaration) {
-                    ExplicitIncludePlugin_1.removeReflection(context.project, reflection);
-                }
                 break;
         }
     }
@@ -67,7 +77,7 @@ let ExplicitIncludePlugin = ExplicitIncludePlugin_1 = class ExplicitIncludePlugi
      * Remove the given reflection from the project.
      */
     static removeReflection(project, reflection, deletedIds) {
-        reflection.traverse((child) => ExplicitIncludePlugin_1.removeReflection(project, child, deletedIds));
+        reflection.traverse(child => ExplicitIncludePlugin_1.removeReflection(project, child, deletedIds));
         const parent = reflection.parent;
         if (!parent) {
             return;
@@ -75,7 +85,7 @@ let ExplicitIncludePlugin = ExplicitIncludePlugin_1 = class ExplicitIncludePlugi
         parent.traverse((child, property) => {
             if (child === reflection) {
                 switch (property) {
-                    case TraverseProperty.Children:
+                    case reflections_1.TraverseProperty.Children:
                         if (parent.children) {
                             const index = parent.children.indexOf(reflection);
                             if (index !== -1) {
@@ -83,13 +93,13 @@ let ExplicitIncludePlugin = ExplicitIncludePlugin_1 = class ExplicitIncludePlugi
                             }
                         }
                         break;
-                    case TraverseProperty.GetSignature:
+                    case reflections_1.TraverseProperty.GetSignature:
                         delete parent.getSignature;
                         break;
-                    case TraverseProperty.IndexSignature:
+                    case reflections_1.TraverseProperty.IndexSignature:
                         delete parent.indexSignature;
                         break;
-                    case TraverseProperty.Parameters:
+                    case reflections_1.TraverseProperty.Parameters:
                         if (reflection.parent.parameters) {
                             const index = reflection.parent.parameters.indexOf(reflection);
                             if (index !== -1) {
@@ -97,10 +107,10 @@ let ExplicitIncludePlugin = ExplicitIncludePlugin_1 = class ExplicitIncludePlugi
                             }
                         }
                         break;
-                    case TraverseProperty.SetSignature:
+                    case reflections_1.TraverseProperty.SetSignature:
                         delete parent.setSignature;
                         break;
-                    case TraverseProperty.Signatures:
+                    case reflections_1.TraverseProperty.Signatures:
                         if (parent.signatures) {
                             const index = parent.signatures.indexOf(reflection);
                             if (index !== -1) {
@@ -108,10 +118,10 @@ let ExplicitIncludePlugin = ExplicitIncludePlugin_1 = class ExplicitIncludePlugi
                             }
                         }
                         break;
-                    case TraverseProperty.TypeLiteral:
-                        parent.type = new IntrinsicType('Object');
+                    case reflections_1.TraverseProperty.TypeLiteral:
+                        parent.type = new models_1.IntrinsicType('Object');
                         break;
-                    case TraverseProperty.TypeParameter:
+                    case reflections_1.TraverseProperty.TypeParameter:
                         if (parent.typeParameters) {
                             const index = parent.typeParameters.indexOf(reflection);
                             if (index !== -1) {
@@ -138,6 +148,6 @@ let ExplicitIncludePlugin = ExplicitIncludePlugin_1 = class ExplicitIncludePlugi
     }
 };
 ExplicitIncludePlugin = ExplicitIncludePlugin_1 = __decorate([
-    Component({ name: 'explicit-include' })
+    components_1.Component({ name: 'explicit-include' })
 ], ExplicitIncludePlugin);
-export { ExplicitIncludePlugin };
+exports.ExplicitIncludePlugin = ExplicitIncludePlugin;
