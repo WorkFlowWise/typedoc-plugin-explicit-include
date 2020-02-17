@@ -43,30 +43,11 @@ let ExplicitIncludePlugin = ExplicitIncludePlugin_1 = class ExplicitIncludePlugi
      */
     onDeclaration(context, reflection, node) {
         let noIncludeCommentOnDeclaration = !reflection.comment || !reflection.comment.hasTag(this.INCLUDE);
-        // let noIncludeCommentOnParentDeclaration =
-        // !reflection.parent || !reflection.parent.comment || !reflection.parent.comment.hasTag(this.INCLUDE);
         switch (reflection.kind) {
-            // case ReflectionKind.Class:
-            // case ReflectionKind.Module:
-            // case ReflectionKind.ExternalModule:
-            // case ReflectionKind.Interface:
-            //   if (noIncludeCommentOnDeclaration) {
-            //     ExplicitIncludePlugin.removeReflection(context.project, reflection);
-            //   }
-            //   break;
-            // case ReflectionKind.Constructor:
-            //   ExplicitIncludePlugin.removeReflection(context.project, reflection);
-            //   break;
             case models_1.ReflectionKind.Variable:
             case models_1.ReflectionKind.Function:
                 if (noIncludeCommentOnDeclaration) {
                     ExplicitIncludePlugin_1.removeReflection(context.project, reflection);
-                }
-                else {
-                    console.log('==============================');
-                    console.log(`Yo we keepin' this one!`);
-                    console.log(reflection.comment);
-                    console.log('==============================');
                 }
                 break;
             default:
