@@ -14,7 +14,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/WorkFlowWise/typedoc-plugin-explicit-include"
+    "url": "https://github.com/epzilla/typedoc-plugin-explicit-include"
   },
   "author": "Chris Thielen",
   "license": "MIT",
