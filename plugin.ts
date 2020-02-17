@@ -46,30 +46,12 @@ export class ExplicitIncludePlugin extends ConverterComponent {
    */
   private onDeclaration(context: Context, reflection: Reflection, node?) {
     let noIncludeCommentOnDeclaration = !reflection.comment || !reflection.comment.hasTag(this.INCLUDE);
-    // let noIncludeCommentOnParentDeclaration =
-    // !reflection.parent || !reflection.parent.comment || !reflection.parent.comment.hasTag(this.INCLUDE);
 
     switch (reflection.kind) {
-      // case ReflectionKind.Class:
-      // case ReflectionKind.Module:
-      // case ReflectionKind.ExternalModule:
-      // case ReflectionKind.Interface:
-      //   if (noIncludeCommentOnDeclaration) {
-      //     ExplicitIncludePlugin.removeReflection(context.project, reflection);
-      //   }
-      //   break;
-      // case ReflectionKind.Constructor:
-      //   ExplicitIncludePlugin.removeReflection(context.project, reflection);
-      //   break;
       case ReflectionKind.Variable:
       case ReflectionKind.Function:
         if (noIncludeCommentOnDeclaration) {
           ExplicitIncludePlugin.removeReflection(context.project, reflection);
-        } else {
-          console.log('==============================');
-          console.log(`Yo we keepin' this one!`);
-          console.log(reflection.comment);
-          console.log('==============================');
         }
         break;
       default:
