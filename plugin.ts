@@ -50,6 +50,8 @@ export class ExplicitIncludePlugin extends ConverterComponent {
     switch (reflection.kind) {
       case ReflectionKind.Variable:
       case ReflectionKind.Function:
+      case ReflectionKind.Property:
+      case ReflectionKind.Method:
         if (noIncludeCommentOnDeclaration) {
           ExplicitIncludePlugin.removeReflection(context.project, reflection);
         }
