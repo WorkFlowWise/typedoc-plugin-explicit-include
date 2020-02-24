@@ -15,8 +15,6 @@ import { Options } from 'typedoc/dist/lib/utils/options';
 
 @Component({ name: 'explicit-include' })
 export class ExplicitIncludePlugin extends ConverterComponent {
-  INCLUDE = 'include';
-
   initialize() {
     var options: Options = this.application.options;
     options.read({}, 0);
@@ -27,11 +25,13 @@ export class ExplicitIncludePlugin extends ConverterComponent {
     });
   }
 
+  private static INCLUDE = 'include';
+
   private onEnd(context: Context, reflection: Reflection, node?) {
     context.project.files.forEach(file => {
       file.reflections.forEach(reflection => {
         if (reflection.comment) {
-          CommentPlugin.removeTags(reflection.comment, this.INCLUDE);
+          CommentPlugin.removeTags(reflection.comment, ExplicitIncludePlugin.INCLUDE);
         }
       });
     });
@@ -45,14 +45,16 @@ export class ExplicitIncludePlugin extends ConverterComponent {
    * @param node  The node that is currently processed if available.
    */
   private onDeclaration(context: Context, reflection: Reflection, node?) {
-    let noIncludeCommentOnDeclaration = !reflection.comment || !reflection.comment.hasTag(this.INCLUDE);
+    let noIncludeCommentOnDeclaration =
+      !reflection.comment || !reflection.comment.hasTag(ExplicitIncludePlugin.INCLUDE);
+    let noIncludeAllCommentOnParent = !ExplicitIncludePlugin.parentHasIncludeAll(reflection);
 
     switch (reflection.kind) {
       case ReflectionKind.Variable:
       case ReflectionKind.Function:
       case ReflectionKind.Property:
       case ReflectionKind.Method:
-        if (noIncludeCommentOnDeclaration) {
+        if (noIncludeCommentOnDeclaration && noIncludeAllCommentOnParent) {
           ExplicitIncludePlugin.removeReflection(context.project, reflection);
         }
         break;
@@ -137,5 +139,14 @@ export class ExplicitIncludePlugin extends ConverterComponent {
         }
       }
     }
+  }
+
+  static parentHasIncludeAll(reflection: Reflection) {
+    if (reflection.comment && reflection.comment.hasTag(ExplicitIncludePlugin.INCLUDE)) {
+      return true;
+    } else if (!reflection.parent) {
+      return false;
+    }
+    return this.parentHasIncludeAll(reflection.parent);
   }
 }
